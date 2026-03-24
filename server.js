@@ -30,6 +30,12 @@ app.get("/", async (req, res) => {
 
       const url = response.url();
       const status = response.status();
+
+      // Ignore fonts.googleapis.com for debugging purposes
+      if ((new URL(url).host) == 'fonts.googleapis.com') {
+        return;
+      }
+
       console.log(`RESPONSE: ${status} ${url}`);
 
       // Only process the feed URL
