@@ -26,32 +26,36 @@ app.get("/", async (req, res) => {
 
     let feedBody = null;
 
-    // Intercept the main feed request and capture the raw XML
-    await page.route("**/*", async (route) => {
-      const request = route.request();
+    // Log every response URL + status
+    page.on("response", async (response) => {
+      const url = response.url();
+      const status = response.status();
 
-      // We only care about the feed URL (startsWith handles redirects)
-      if (request.url().startsWith(decoded)) {
+      console.log(`RESPONSE: ${status} ${url}`);
+
+      // Capture the feed response
+      if (url.startsWith(decoded)) {
+        console.log("MATCHED FEED URL:", url);
         try {
-          const response = await request.response();
-          if (response) {
-            feedBody = await response.text();
-          }
+          feedBody = await response.text();
+          console.log("Captured feed body, length:", feedBody.length);
         } catch (err) {
-          console.error("Error capturing feed response:", err);
+          console.error("Error reading feed response:", err);
         }
       }
-
-      route.continue();
     });
 
-    // Navigate to the feed URL
-    await page.goto(decoded, { waitUntil: "networkidle", timeout: 60000 });
+    // Navigate WITHOUT waiting for networkidle
+    console.log("Navigating to:", decoded);
+    await page.goto(decoded, { timeout: 60000 });
 
-    // If we captured the feed, return it
+    // Give the response a moment to arrive
+    await page.waitForTimeout(2000);
+
     if (feedBody) {
       res.type("application/xml").send(feedBody);
     } else {
+      console.log("No feed body captured");
       res.status(500).send("Failed to capture feed response");
     }
 
