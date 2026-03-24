@@ -24,8 +24,9 @@ app.get("/", async (req, res) => {
 
   try {
     await page.goto(decoded, { waitUntil: "networkidle" });
-    const content = await page.content();
-    res.send(content);
+    const response = await page.waitForResponse(resp => resp.url() === decoded);
+    const body = await response.text();
+    res.type("application/xml").send(body);
   } catch (err) {
     res.status(500).send("Failed to load page: " + err);
   } finally {
