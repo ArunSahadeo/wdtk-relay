@@ -17,6 +17,7 @@ app.get("/", async (req, res) => {
 
   const browser = await chromium.launch({
     headless: true,
+    args: ["--no-sandbox", "--disable-setuid-sandbox"]
   });
 
   const page = await browser.newPage();
@@ -32,5 +33,4 @@ app.get("/", async (req, res) => {
   }
 });
 
-app.listen(8080, () => console.log("Relay running on port 8080"));
-
+app.listen(8080, "0.0.0.0." () => console.log("Relay running on port 8080"));
