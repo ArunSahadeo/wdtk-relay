@@ -15,6 +15,7 @@ app.get("/", async (req, res) => {
   }
 
   let browser;
+  let done = false;
 
   try {
     browser = await chromium.launch({
@@ -24,46 +25,58 @@ app.get("/", async (req, res) => {
 
     const page = await browser.newPage();
 
-    let feedBody = null;
-
-    // Log every response URL + status
     page.on("response", async (response) => {
+      if (done) return;
+
       const url = response.url();
       const status = response.status();
-
       console.log(`RESPONSE: ${status} ${url}`);
 
-      // Capture the feed response
       if (url.startsWith(decoded)) {
         console.log("MATCHED FEED URL:", url);
+
         try {
-          feedBody = await response.text();
-          console.log("Captured feed body, length:", feedBody.length);
+          const text = await response.text();
+
+          // Validate XML by checking for the XML declaration
+          const xmlIndex = text.indexOf("<?xml");
+          if (xmlIndex === -1) {
+            console.log("Feed response did not contain XML");
+            done = true;
+            await browser.close();
+            res.status(500).send("Feed did not contain valid XML");
+            return;
+          }
+
+          const xml = text.slice(xmlIndex);
+          console.log("Captured XML feed, length:", xml.length);
+
+          done = true;
+          await browser.close();
+          res.type("application/xml").send(xml);
+
         } catch (err) {
           console.error("Error reading feed response:", err);
         }
       }
     });
 
-    // Navigate WITHOUT waiting for networkidle
     console.log("Navigating to:", decoded);
     await page.goto(decoded, { timeout: 60000 });
 
     // Give the response a moment to arrive
     await page.waitForTimeout(2000);
 
-    if (feedBody) {
-      res.type("application/xml").send(feedBody);
-    } else {
-      console.log("No feed body captured");
-      res.status(500).send("Failed to capture feed response");
+    if (!done) {
+      console.log("No XML feed captured");
+      res.status(500).send("Failed to capture XML feed");
     }
 
   } catch (err) {
     console.error("Playwright error:", err);
     res.status(500).send("Playwright error: " + err);
   } finally {
-    if (browser) await browser.close();
+    if (browser && !done) await browser.close();
   }
 });
 
