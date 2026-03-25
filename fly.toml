@@ -4,7 +4,7 @@
 #
 
 app = 'wdtk-relay'
-primary_region = 'ams'
+primary_region = 'cdg'
 
 [http_service]
   internal_port = 8080
